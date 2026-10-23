@@ -135,7 +135,7 @@ jobs:
       env:
         UV_PYTHON: ${{ steps.setup_python.outputs.python-path }}
         UV_PYTHON_DOWNLOADS: never
-      run: uv pip install "pytest-xdist>=3.6"
+      run: uv pip install --python .venv "pytest-xdist>=3.6"
 
     # Tests that bind a fixed MASTER_PORT can't share a host with other workers;
     # they run serially below. --dist loadfile keeps each file on one worker
