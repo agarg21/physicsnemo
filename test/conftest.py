@@ -258,3 +258,23 @@ def reset_dynamo_state():
     # Reset after test completes
     torch._dynamo.reset()
     torch._dynamo.config.error_on_recompile = False
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _xdist_worker_cwd(request, tmp_path_factory):
+    """Under pytest-xdist, run each worker in its own working directory.
+
+    Many tests save to fixed relative paths (e.g. ``checkpoint.mdlus`` in
+    ``test/common/checkpoints.py``); with several workers sharing one cwd they
+    overwrite and delete each other's files. Serial runs are unaffected.
+    """
+    workerinput = getattr(request.config, "workerinput", None)
+    if workerinput is None:
+        yield
+        return
+    old_cwd = os.getcwd()
+    os.chdir(tmp_path_factory.mktemp(f"cwd_{workerinput['workerid']}"))
+    try:
+        yield
+    finally:
+        os.chdir(old_cwd)

@@ -131,8 +131,32 @@ jobs:
         actual=sys.version_info[:2]; assert actual == expected,
         f'Expected Python {expected}, got {sys.version}'"
 
-    - name: Run tests
+    - name: Install pytest-xdist
       env:
         UV_PYTHON: ${{ steps.setup_python.outputs.python-path }}
         UV_PYTHON_DOWNLOADS: never
-      run: uv run --no-sync pytest test/
+      run: uv pip install --python .venv "pytest-xdist>=3.6"
+
+    # Tests that bind a fixed MASTER_PORT can't share a host with other workers;
+    # they run serially below. --dist loadfile keeps each file on one worker
+    # (pytest-dependency ordering, file-scoped fixtures).
+    - name: Run tests (parallel)
+      env:
+        UV_PYTHON: ${{ steps.setup_python.outputs.python-path }}
+        UV_PYTHON_DOWNLOADS: never
+      run: >-
+        uv run --no-sync pytest test/ -n 4 --dist loadfile
+        --ignore=test/distributed
+        --ignore=test/models/test_distributed_graph.py
+        --ignore=test/metrics/test_metrics_general.py
+        --ignore=test/domain_parallel/test_function_registration.py
+
+    - name: Run tests (serial, fixed-port distributed tests)
+      env:
+        UV_PYTHON: ${{ steps.setup_python.outputs.python-path }}
+        UV_PYTHON_DOWNLOADS: never
+      run: >-
+        uv run --no-sync pytest test/distributed
+        test/models/test_distributed_graph.py
+        test/metrics/test_metrics_general.py
+        test/domain_parallel/test_function_registration.py
